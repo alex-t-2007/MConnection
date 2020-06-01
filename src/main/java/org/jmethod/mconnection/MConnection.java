@@ -1,5 +1,9 @@
 package org.jmethod.mconnection;
 
+import org.postgresql.util.PSQLException;
+
+import javax.naming.Context;
+import javax.naming.InitialContext;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -15,25 +19,36 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+
+/**
+ * The MConnection package is a set of Java utility classes for easing JDBC development.
+ *
+ * @author Alex L. Tokarev
+ */
 
 public class MConnection {
-    private static final String ID = "ID";
-    private static final String TABLES = "TABLES";
-    private static final String DEFAULT = "{DEFAULT}";
-    private static final String DELIM = ",";
+    public static final String ID = "ID";
+    public static final String DEFAULT = "{DEFAULT}";
 
-    private static final String LIMIT = "LIMIT";
-    private static final String FETCH_FIRST = "FETCH FIRST";
-    private static final String ROWS = "ROWS";
-    private static final String ROWNUM = "ROWNUM";
-    private static final String SELECT_FIRST = "SELECT FIRST";
+    public static final String LIMIT = "LIMIT";
+    public static final String FETCH_FIRST = "FETCH FIRST";
+    public static final String ROWS = "ROWS";
+    public static final String ROWNUM = "ROWNUM";
+    public static final String SELECT_FIRST = "SELECT FIRST";
+
+    private static final String TABLES = "TABLES";
+    private static final String DELIM = ",";
+    private static final String  ENV_CONTEXT_NAME = "java:comp/env";
 
     private static final String IS_SEE__PREFIX = "java.sql.SQLSyntaxErrorException see=";
     private static final String IS_REL_NOT_EXIST__PREFIX = "relation not exist e=";
 
     private Connection connection;
+    private String connectionError = null;
 
     // For DataSource MODE
+    private static Context context = null;
     private DataSource dataSource;
 
     // For Driver MODE
@@ -54,25 +69,44 @@ public class MConnection {
     // TODO Hashtable
     private Hashtable metaDataTable_Cash = new Hashtable();
 
-    private static class ActivateResult {
+    protected static class ActivateResult {
         public boolean activated = false;
         public boolean done = true;
     }
 
-    // createMConnection
-
     /**
-     * режим драйвера,
-     * деражится пока живет приложение
-     * для десктопных приложений
-     * @param driver
-     * @param url
-     * @param login
-     * @param password
-     * @param limitTyp
-     * @param idNames
-     * @param sequences
-     * @return
+     * Создание объекта 'MConnection' в режиме 'Драйверный'.
+     * При этом создается соединение с БД ('connection'), котрое может существовать все
+     * время пока живет приложение.
+     * Данный (драйверный) режим используется, как правило, для 'десктопных' приложений.
+     *
+     * @param driver ("org.postgresql.Driver")
+     * @param url ("jdbc:postgresql://127.0.0.1:5432/ib")
+     * @param login ("testLogin")
+     * @param password ("testPassword")
+     * @param limitTyp (LIMIT | FETCH_FIRST | ROWS | ROWNUM | SELECT_FIRST)
+     * @param idNames Names of relation id field - Map<String, String>,
+     *               key - relation name or {DEFAULT}, value - sequences name. Default: "ID".
+     *     Examples:
+     *         Map<String, String> idNames = new HashMap<>();
+     *         idNames.put(DEFAULT, ID);
+     *         idNames.put("AUDC_PCLIB_BUSINESS_OBJECT", "SYSNAME");
+     *         idNames.put("AUDC_PCLIB_BUSINESS_OPERATIONS", "SYSNAME");
+     *         idNames.put("AUDC_PCLIB_BUSINESS_SERVICE", "SYSNAME");
+     *         idNames.put("AUDC_TASK_PARAM", "SYSNAME");
+     *
+     *
+     * @param sequences - Map<String, String>, key - relation name, value - sequences name
+     *     Examples:
+     *         Map<String, String> sequences = new HashMap<>();
+     *         sequences.put("AUDC_ACLIB_ACTOR_ACCOUNT", "audc_aclib_actor_account_id_seq");
+     *         sequences.put("AUDC_ACLIB_CLIENT_IP_RANGE", "audc_aclib_client_ip_range_id_seq");
+     *         sequences.put("AUDC_ACLIB_ROLE_WORKPLACE", "audc_aclib_role_workplace_id_seq");
+     *         sequences.put("AUDC_PARAM", "audc_param_seq");
+     *         sequences.put("AUDC_TASK", "audc_task_seq");
+     *         sequences.put("AUDC_USER", "audc_user_seq");
+     *
+     * @return MConnectio object
      */
     public static MConnection createMConnection(
         String driver,
@@ -91,21 +125,39 @@ public class MConnection {
         mc.limitTyp = limitTyp;
         mc.idNames = idNames;
         mc.sequences = sequences;
-        mc.connection = createConnection(driver, url, login, password).connection;
+        ConnectionReply connectionReply = createConnection(driver, url, login, password);
+        mc.connection = connectionReply.connection;
+        mc.connectionError = connectionReply.error;
         return mc;
     }
 
     /**
-     * режим datasource
-     * когда надо из пула берется соединение
-     * в конце соединение отдается в пул
-     * для экономии соединений
-     * соединение выделяется только тогда, когда она нужно
-     * @param dataSource
-     * @param limitTyp
-     * @param idNames
-     * @param sequences
-     * @return
+     * Создание объекта 'MConnection' в режиме 'Datasource'.
+     * При этом соединение с БД ('connection') не создается, а берется по мере надобности из пула соединений
+     * в 'Datasource' и возвращается в пул после использования.
+     * Данный режим (Datasource) используется, как правило, для web-приложений.
+     * @param dataSource Datasource
+     * @param limitTyp (LIMIT | FETCH_FIRST | ROWS | ROWNUM | SELECT_FIRST)
+     * @param idNames Names of relation id field - Map<String, String>,
+     *               key - relation name or {DEFAULT}, value - sequences name. Default: "ID".
+     *     Examples:
+     *         Map<String, String> idNames = new HashMap<>();
+     *         idNames.put(DEFAULT, ID);
+     *         idNames.put("AUDC_PCLIB_BUSINESS_OBJECT", "SYSNAME");
+     *         idNames.put("AUDC_PCLIB_BUSINESS_OPERATIONS", "SYSNAME");
+     *         idNames.put("AUDC_PCLIB_BUSINESS_SERVICE", "SYSNAME");
+     *         idNames.put("AUDC_TASK_PARAM", "SYSNAME");
+     * @param sequences - Map<String, String>, key - relation name, value - sequences name
+     *     Examples:
+     *         Map<String, String> sequences = new HashMap<>();
+     *         sequences.put("AUDC_ACLIB_ACTOR_ACCOUNT", "audc_aclib_actor_account_id_seq");
+     *         sequences.put("AUDC_ACLIB_CLIENT_IP_RANGE", "audc_aclib_client_ip_range_id_seq");
+     *         sequences.put("AUDC_ACLIB_ROLE_WORKPLACE", "audc_aclib_role_workplace_id_seq");
+     *         sequences.put("AUDC_PARAM", "audc_param_seq");
+     *         sequences.put("AUDC_TASK", "audc_task_seq");
+     *         sequences.put("AUDC_USER", "audc_user_seq");
+     *
+     * @return MConnectio object
      */
     public static MConnection createMConnection(
         DataSource dataSource,
@@ -120,9 +172,42 @@ public class MConnection {
         mc.setDataSource(dataSource);
         return mc;
     }
-    //^^createMConnection
 
-    // CRUD
+    public static DataSource getDataSource(String datasourceName){
+        Context envContext = getContext();
+        if (envContext == null){
+            return null;
+        }
+        try {
+            return ((DataSource) envContext.lookup(datasourceName));
+        } catch(Exception e){
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static Context getContext(){
+        if (context == null){
+            try {
+                context = (Context)((new InitialContext()).lookup(ENV_CONTEXT_NAME));
+            } catch( Exception e ){
+                context = null;
+                e.printStackTrace();
+            }
+        }
+        return context;
+    }
+
+    /**
+     * Соединение с БД существует (применяется в основном для Драйверного режима).
+     *
+     * @return признак существующего соединения.
+     */
+    public boolean isConnectionActivate() {
+        return this.connection != null;
+    }
+
+    // Методы CRUD:
     // CREATE
     public DbData create(DbData dbData, boolean commit) {
         // создает строку в таблицы, значения полей в 'dbData'
@@ -158,7 +243,7 @@ public class MConnection {
             // Если соединение бралось из DataSource, то оно возвращается
             if (activateResult.activated){
                 this.deactivateDSConnection();
-            } // if
+            }
         }
         return dbData;
     }
@@ -194,9 +279,8 @@ public class MConnection {
             // Если соединение бралось из DataSource, то оно возвращается
             if (activateResult.activated){
                 this.deactivateDSConnection();
-            } // if
-            //^^Если соединение бралось из DataSource, то оно возвращается
-        } // try
+            }
+        }
     }
 
     // UPDATE
@@ -269,13 +353,12 @@ public class MConnection {
             // Если соединение бралось из DataSource, то оно возвращается
             if (activateResult.activated){
                 this.deactivateDSConnection();
-            } // if
+            }
         }
         return dbData;
     }
-    //^^CRUD
 
-    // FIND
+    // Методы FIND
     public FindData find(String sql, List<Object> params, boolean resultTableNameFlag){
         FindData fd = findPsRows(sql, params, resultTableNameFlag);
         return fd;
@@ -290,7 +373,6 @@ public class MConnection {
     public FindData find1(String sql, boolean resultTableNameFlag) {
         return find1(sql, new ArrayList<>(), resultTableNameFlag);
     }
-    //^^FIND
 
     public String getIdName(String tableName) {
         if (idNames == null) {
@@ -320,9 +402,19 @@ public class MConnection {
         return idn.toUpperCase();
     }
 
-    public String getIdName() {
-        return getIdName(null);
+    public Connection getConnection() {
+        return connection;
     }
+    public void setConnection(Connection connection) {
+        this.connection = connection;
+    }
+
+    public String getConnectionError() {
+        return connectionError;
+    }
+    //    public void setConnectionError(String connectionError) {
+    //        this.connectionError = connectionError;
+    //    }
 
     // DataSource
     public DataSource getDataSource() {
@@ -332,6 +424,15 @@ public class MConnection {
         this.dataSource = dataSource;
     }
 
+    /**
+     * В режиме 'Datasource' получение соединения с БД ('connection') из пула соединений в 'Datasource',
+     * которое после использования должно быть возвращено в пул методом: 'deactivateDSConnection'.
+     * Если соединение уже выделено раньше (connection != null), то соединение не выделяется из пула,
+     * а предполагается, что будет использоваться уже выделенное соединение.
+     *
+     * @param autoCommit - Auto commit flag
+     * @return признак, что соединение было выделено.
+     */
     public boolean activateDSConnection(boolean autoCommit){
         if ( this.dataSource == null ){
             return false;
@@ -361,10 +462,22 @@ public class MConnection {
         }
     }
 
+    /**
+     * В режиме 'Datasource' получение соединения с БД ('connection') из пула соединений в 'Datasource',
+     * которое после использования должно быть возвращено в пул методом: 'deactivateDSConnection'.
+     * Если соединение уже выделено раньше (connection != null), то соединение не выделяется из пула,
+     * а предполагается, что будет использоваться уже выделенное соединение.
+     * Атрибут 'autoCommit' равен 'false'.
+     *
+     * @return признак, что соединение было выделено.
+     */
     public boolean activateDSConnection(){
         return activateDSConnection( false );
     }
 
+    /**
+     * В режиме 'Datasource' возврат (после использования) соединения с БД ('connection') в пул соединений.
+     */
     public void deactivateDSConnection(){
         String conStr = ""+ connection;
         closeDSConnection(connection);
@@ -374,10 +487,26 @@ public class MConnection {
         this.connection = null;
     }
 
+    /**
+     * Если режим равен 'DataSource', иначе - 'Драйверный'.
+     * @return 'DataSource', иначе - 'Драйверный'
+     */
     public boolean isDataSourceMode(){
         return this.connection == null && this.dataSource != null;
     }
 
+    /**
+     * В режиме 'Datasource' получение соединения с БД ('connection') из пула соединений в 'Datasource',
+     * которое после использования должно быть возвращено в пул методом: 'deactivateDSConnection'.
+     * Если соединение уже выделено раньше (connection != null), то соединение не выделяется из пула,
+     * а предполагается, что будет использоваться уже выделенное соединение.
+     *
+     * @param commit - commit flag.
+     * @param procName - process Name (for log).
+     * @param funcName - function Name (for log).
+     *
+     * @return признак, что соединение было выделено.
+     */
     public ActivateResult actDSCon(boolean commit, String procName, String funcName) {
         ActivateResult activateResult = new ActivateResult();
 
@@ -454,6 +583,13 @@ public class MConnection {
         } // try
     } // rollback
 
+    /**
+     * Добавить оператор ограничения количества искомых строк, если его нет.
+     *
+     * @param sql
+     * @param quant
+     * @return
+     */
     public String setLimit(String sql, long quant) {
         if (sql == null || sql.isEmpty()) {
             return sql;
@@ -483,11 +619,22 @@ public class MConnection {
         return sql;
     }
 
+    /**
+     * Добавить оператор ограничения количества искомых строк, если его нет.
+     *
+     * @param sql
+     * @return
+     */
     public String setLimit(String sql) {
         return setLimit(sql, 1L);
     }
 
-    // con act !!
+    /**
+     * Создать ResultSet по тексту sql-запроса. TODO: MResultSet
+     *
+     * @param sqlString тексту sql-запроса.
+     * @return ResultSet
+     */
     protected ResultSet createResultSet( String sqlString ){
         warningNotActivatedDSConnection();
         return createResultSet(
@@ -1261,11 +1408,13 @@ public class MConnection {
             Locale.setDefault( locale );
 
             connectionReply.connection.setAutoCommit( false );
-        } catch( Exception e ){
-            e.printStackTrace();
+        } catch(ClassNotFoundException cnfe){
             connectionReply.connection = null;
-            connectionReply.error = e.toString();
-        } // try
+            connectionReply.error = cnfe.toString();
+        } catch(SQLException sqle) {
+            connectionReply.connection = null;
+            connectionReply.error = sqle.toString();
+        }
         return connectionReply;
     }
 
@@ -1291,21 +1440,22 @@ public class MConnection {
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
 
+    /*
     private static MConnection testCreateMc() {
         Map<String, String> idNames = new HashMap<>();
         idNames.put(DEFAULT, ID);
-/*        idNames.put("AUDC_PCLIB_BUSINESS_OBJECT", "SYSNAME");
-        idNames.put("AUDC_PCLIB_BUSINESS_OPERATIONS", "SYSNAME");
-        idNames.put("AUDC_PCLIB_BUSINESS_SERVICE", "SYSNAME");
-        idNames.put("AUDC_TASK_PARAM", "SYSNAME");*/
-//        oboz2.public.flyway_schema_history [PostgreSQL - oboz2@localhost]
+        //        idNames.put("AUDC_PCLIB_BUSINESS_OBJECT", "SYSNAME");
+        //        idNames.put("AUDC_PCLIB_BUSINESS_OPERATIONS", "SYSNAME");
+        //        idNames.put("AUDC_PCLIB_BUSINESS_SERVICE", "SYSNAME");
+        //        idNames.put("AUDC_TASK_PARAM", "SYSNAME");
+
         Map<String, String> sequences = new HashMap<>();
-/*        sequences.put("AUDC_ACLIB_ACTOR_ACCOUNT", "audc_aclib_actor_account_id_seq");
-        sequences.put("AUDC_ACLIB_CLIENT_IP_RANGE", "audc_aclib_client_ip_range_id_seq");
-        sequences.put("AUDC_ACLIB_ROLE_WORKPLACE", "audc_aclib_role_workplace_id_seq");
-        sequences.put("AUDC_PARAM", "audc_param_seq");
-        sequences.put("AUDC_TASK", "audc_task_seq");
-        sequences.put("AUDC_USER", "audc_user_seq");*/
+        //    sequences.put("AUDC_ACLIB_ACTOR_ACCOUNT", "audc_aclib_actor_account_id_seq");
+        //    sequences.put("AUDC_ACLIB_CLIENT_IP_RANGE", "audc_aclib_client_ip_range_id_seq");
+        //    sequences.put("AUDC_ACLIB_ROLE_WORKPLACE", "audc_aclib_role_workplace_id_seq");
+        //    sequences.put("AUDC_PARAM", "audc_param_seq");
+        //    sequences.put("AUDC_TASK", "audc_task_seq");
+        //    sequences.put("AUDC_USER", "audc_user_seq");
 
         MConnection mc = MConnection.createMConnection(
             "org.postgresql.Driver",
@@ -1425,6 +1575,12 @@ public class MConnection {
 
     private static void test() {
         MConnection mc = testCreateMc();
+        if (!mc.isConnectionActivate()) {
+            Utils.outln("Can't create Driver connection mc=" + mc);
+            Utils.outln("mc.getConnectionError()=" + mc.getConnectionError());
+            return;
+        }
+
         Utils.outln("mc=" + mc);
         Utils.outln("mc.connection=" + mc.connection);
         Utils.outln("--------------------------------------------------------------------------------");
@@ -1444,76 +1600,78 @@ public class MConnection {
         List<DbData> readList = testReadRows(mc, createdList);
         Utils.outln("readList=" + readList);
         Utils.outln("--------------------------------------------------------------------------------");
-   /*
-        List<DbData> updateList = testUpdateRows(mc, createdList);
-        Utils.outln("updateList=" + updateList);
-        Utils.outln("--------------------------------------------------------------------------------");
 
-        List<DbData> readList2 = testReadRows(mc, updateList);
-        Utils.outln("readList2=" + readList2);
-        Utils.outln("--------------------------------------------------------------------------------");
 
-        List<DbData> findList = testFindRows(mc, "SELECT * FROM AUDC_PARAM ORDER BY ID", false);
-        Utils.outln("findList=" + findList);
-        Utils.outln("--------------------------------------------------------------------------------");
-
-        List<DbData> findList2 = testFindRows(mc,
-                "SELECT * FROM AUDC_PARAM " +
-                     "WHERE "+
-                       "PARAM_NAME LIKE '%_@' "+
-                     "ORDER BY ID",
-                true
-        );
-        Utils.outln("findList2=" + findList2);
-        Utils.outln("--------------------------------------------------------------------------------");
-
-        List<DbData> findList3 = testFindRows(mc,
-                "SELECT " +
-                        "CURATOR_ACTION, "+
-                        "DEFAULT_VALUE, "+
-                        "PARAM_DESCR "+
-                     "FROM AUDC_PARAM " +
-                        "WHERE "+
-                     "PARAM_NAME LIKE '%_@' "+
-                     "ORDER BY ID",
-                false
-        );
-        Utils.outln("findList3=" + findList3);
-        Utils.outln("--------------------------------------------------------------------------------");
-
-        List<Object> params = new ArrayList<>();
-        params.add("%_@");
-        List<DbData> findList4 = testFindRows(mc,
-        "SELECT " +
-                "CURATOR_ACTION, "+
-                "DEFAULT_VALUE, "+
-                "PARAM_DESCR "+
-              "FROM AUDC_PARAM " +
-              "WHERE "+
-                "PARAM_NAME NOT LIKE ? "+
-              "ORDER BY ID",
-              params,
-             false
-        );
-        Utils.outln("findList4=" + findList4);
-        Utils.outln("--------------------------------------------------------------------------------");
-
-        String sql =
-            "SELECT " +
-                "AUDC_TASK_PARAM.PARAM_VALUE, AUDC_TASK.*, AUDC_PARAM.* " +
-            "FROM AUDC_TASK_PARAM " +
-            "LEFT JOIN AUDC_TASK  ON AUDC_TASK.ID  = AUDC_TASK_PARAM.TASK_ID " +
-            "LEFT JOIN AUDC_PARAM ON AUDC_PARAM.ID = AUDC_TASK_PARAM.PARAM_ID";
-        List<DbData> findList5 = testFindRows(mc, sql, true);
-        Utils.outln("findList5=" + findList5);
-        Utils.outln("--------------------------------------------------------------------------------");
-
-        List<DbData> deletedList = testDeleteRows(mc, createdList);
-        Utils.outln("deletedList=" + deletedList);
-        Utils.outln("--------------------------------------------------------------------------------");
-  */  }
+        //    List<DbData> updateList = testUpdateRows(mc, createdList);
+        //    Utils.outln("updateList=" + updateList);
+        //    Utils.outln("--------------------------------------------------------------------------------");
+        //
+        //    List<DbData> readList2 = testReadRows(mc, updateList);
+        //    Utils.outln("readList2=" + readList2);
+        //    Utils.outln("--------------------------------------------------------------------------------");
+        //
+        //    List<DbData> findList = testFindRows(mc, "SELECT * FROM AUDC_PARAM ORDER BY ID", false);
+        //    Utils.outln("findList=" + findList);
+        //    Utils.outln("--------------------------------------------------------------------------------");
+        //
+        //    List<DbData> findList2 = testFindRows(mc,
+        //            "SELECT * FROM AUDC_PARAM " +
+        //                 "WHERE "+
+        //                   "PARAM_NAME LIKE '%_@' "+
+        //                 "ORDER BY ID",
+        //            true
+        //    );
+        //    Utils.outln("findList2=" + findList2);
+        //    Utils.outln("--------------------------------------------------------------------------------");
+        //
+        //    List<DbData> findList3 = testFindRows(mc,
+        //            "SELECT " +
+        //                    "CURATOR_ACTION, "+
+        //                    "DEFAULT_VALUE, "+
+        //                    "PARAM_DESCR "+
+        //                 "FROM AUDC_PARAM " +
+        //                    "WHERE "+
+        //                 "PARAM_NAME LIKE '%_@' "+
+        //                 "ORDER BY ID",
+        //            false
+        //    );
+        //    Utils.outln("findList3=" + findList3);
+        //    Utils.outln("--------------------------------------------------------------------------------");
+        //
+        //    List<Object> params = new ArrayList<>();
+        //    params.add("%_@");
+        //    List<DbData> findList4 = testFindRows(mc,
+        //    "SELECT " +
+        //            "CURATOR_ACTION, "+
+        //            "DEFAULT_VALUE, "+
+        //            "PARAM_DESCR "+
+        //          "FROM AUDC_PARAM " +
+        //          "WHERE "+
+        //            "PARAM_NAME NOT LIKE ? "+
+        //          "ORDER BY ID",
+        //          params,
+        //         false
+        //    );
+        //    Utils.outln("findList4=" + findList4);
+        //    Utils.outln("--------------------------------------------------------------------------------");
+        //
+        //    String sql =
+        //        "SELECT " +
+        //            "AUDC_TASK_PARAM.PARAM_VALUE, AUDC_TASK.*, AUDC_PARAM.* " +
+        //        "FROM AUDC_TASK_PARAM " +
+        //        "LEFT JOIN AUDC_TASK  ON AUDC_TASK.ID  = AUDC_TASK_PARAM.TASK_ID " +
+        //        "LEFT JOIN AUDC_PARAM ON AUDC_PARAM.ID = AUDC_TASK_PARAM.PARAM_ID";
+        //    List<DbData> findList5 = testFindRows(mc, sql, true);
+        //    Utils.outln("findList5=" + findList5);
+        //    Utils.outln("--------------------------------------------------------------------------------");
+        //
+        //    List<DbData> deletedList = testDeleteRows(mc, createdList);
+        //    Utils.outln("deletedList=" + deletedList);
+        //    Utils.outln("--------------------------------------------------------------------------------");
+    }
 
     public static void main(String[] args) {
         test();
     }
+    */
 }

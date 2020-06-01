@@ -28,6 +28,11 @@
             <url>file:///${user.home}/.m2/repository</url>
             <!--<url>http://akmsoft.net/mvnrepo/</url>-->
         </repository>
+
+        <!--<repository>-->
+        <!--    <id>jndi</id>-->
+        <!--    <url>https://mvnrepository.com/artifact/com.sun.jndi/fscontext</url>-->
+        <!--</repository>-->
     </repositories>
 
     <dependencies>
@@ -41,6 +46,12 @@
             <artifactId>postgresql</artifactId>
             <version>42.2.12</version>
         </dependency>
+
+        <!--<dependency>-->
+        <!--    <groupId>com.sun.jndi</groupId>-->
+        <!--    <artifactId>fscontext</artifactId>-->
+        <!--    <version>1.2-beta-3</version>-->
+        <!--</dependency>-->
     </dependencies>
 
     <build>
