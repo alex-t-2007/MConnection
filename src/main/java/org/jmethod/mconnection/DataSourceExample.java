@@ -1,92 +1,31 @@
 package org.jmethod.mconnection;
 
-import static org.jmethod.mconnection.MConnection.DEFAULT;
-import static org.jmethod.mconnection.MConnection.ID;
+import static org.jmethod.mconnection.ExampleUtils.DATA_SOURCE;
+import static org.jmethod.mconnection.ExampleUtils.ID_NAMES;
+import static org.jmethod.mconnection.ExampleUtils.LOGIN;
+import static org.jmethod.mconnection.ExampleUtils.PASSWORD;
+import static org.jmethod.mconnection.ExampleUtils.SEQUENCES;
+import static org.jmethod.mconnection.ExampleUtils.URL;
+import static org.jmethod.mconnection.ExampleUtils.testCreateRows;
+import static org.jmethod.mconnection.ExampleUtils.testDeleteRows;
+import static org.jmethod.mconnection.ExampleUtils.testReadRows;
+import static org.jmethod.mconnection.ExampleUtils.testUpdateRows;
 import static org.jmethod.mconnection.MConnection.LIMIT;
+import static org.jmethod.mconnection.MConnection.createDataSource;
 
-import org.postgresql.ds.PGSimpleDataSource;
-
-import javax.sql.DataSource;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class DataSourceExample {
 
-    public static DataSource makeDataSource(
-        String user, String password, String databaseName, String serverName, int port
-    ) {
-        PGSimpleDataSource ods = new PGSimpleDataSource();
-        ods.setServerNames(new String[]{serverName});
-        ods.setPortNumbers(new int[]{port});
-        ods.setDatabaseName(databaseName);
-        ods.setUser(user);
-        ods.setPassword(password);
-
-        return ods;
-    }
-
-    public static DataSource makeDataSource(String url, String user, String password) {
-        PGSimpleDataSource ods = new PGSimpleDataSource();
-        ods.setURL(url);
-        ods.setUser(user);
-        ods.setPassword(password);
-        return ods;
-    }
-
-    //    private static InitialContext makeContext(String dataSourceName, DataSource dataSource) {
-    //        Hashtable env = new Hashtable();
-    //        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.fscontext.RefFSContextFactory");
-    //        env.put(Context.PROVIDER_URL, "file:JNDI");
-    //        try {
-    //            InitialContext context = new InitialContext(env);
-    //            context.rebind(dataSourceName, dataSource);
-    //            return context;
-    //        } catch(NamingException ne) {
-    //            ne.printStackTrace();
-    //            return null;
-    //        }
-    //    }
-    //
-    //    private static DataSource getDataSource(InitialContext context, String dataSourceName) {
-    //        try {
-    //            return (DataSource) context.lookup(dataSourceName);
-    //        } catch(NamingException ne) {
-    //            ne.printStackTrace();
-    //            return null;
-    //        }
-    //    }
-
-    public static MConnection testDsCreateMConnection(){
-        //    DataSource dataSource = makeDataSource(
-        //            "audc", "audc_psw", "ib", "localhost",5432
-        //    );
-        DataSource dataSource = makeDataSource(
-                "jdbc:postgresql://localhost:5432/ib", "audc", "audc_psw"
-        );
-        //    InitialContext context = makeContext("jdbc/DataBase", dataSource);
-        //    dataSource = getDataSource(context, "jdbc/DataBase");
-
-        Map<String, String> idNames = new HashMap<>();
-        idNames.put(DEFAULT, ID);
-        idNames.put("AUDC_PCLIB_BUSINESS_OBJECT", "SYSNAME");
-        idNames.put("AUDC_PCLIB_BUSINESS_OPERATIONS", "SYSNAME");
-        idNames.put("AUDC_PCLIB_BUSINESS_SERVICE", "SYSNAME");
-        idNames.put("AUDC_TASK_PARAM", "SYSNAME");
-
-        Map<String, String> sequences = new HashMap<>();
-        sequences.put("AUDC_ACLIB_ACTOR_ACCOUNT", "audc_aclib_actor_account_id_seq");
-        sequences.put("AUDC_ACLIB_CLIENT_IP_RANGE", "audc_aclib_client_ip_range_id_seq");
-        sequences.put("AUDC_ACLIB_ROLE_WORKPLACE", "audc_aclib_role_workplace_id_seq");
-        sequences.put("AUDC_PARAM", "audc_param_seq");
-        sequences.put("AUDC_TASK", "audc_task_seq");
-        sequences.put("AUDC_USER", "audc_user_seq");
-
+    private static MConnection testDsCreateMConnection(){
         return MConnection.createMConnection(
-            dataSource,
+            createDataSource(DATA_SOURCE, URL),
+            LOGIN,
+            PASSWORD,
             LIMIT,
-            idNames,
-            sequences
+            ID_NAMES,
+            SEQUENCES
         );
     }
 
@@ -116,7 +55,7 @@ public class DataSourceExample {
         return fd.getDbDatas();
     }
 
-    private static void testDS() {
+    private static void testDs(boolean act) {
         MConnection mc = testDsCreateMConnection();
         if (mc.getDataSource() == null) {
             Utils.outln("Can't create DataSource connection mc=" + mc);
@@ -124,28 +63,102 @@ public class DataSourceExample {
             Utils.outln("--------------------------------------------------------------------------------");
             return;
         }
+        if (act) {
+            act = mc.activateDSConnection();
+        }
 
         Utils.outln("mc=" + mc);
         Utils.outln("mc.getDataSource()=" + mc.getDataSource());
         Utils.outln("--------------------------------------------------------------------------------");
 
-        String sql =
+        List<DbData> createdList = testCreateRows(mc);
+        Utils.outln("createdList=" + createdList);
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        List<DbData> readList = testReadRows(mc, createdList);
+        Utils.outln("readList=" + readList);
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        List<DbData> updateList = testUpdateRows(mc, createdList);
+        Utils.outln("updateList=" + updateList);
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        List<DbData> readList2 = testReadRows(mc, updateList);
+        Utils.outln("readList2=" + readList2);
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        List<DbData> findList = testFindRows(mc, "SELECT * FROM AUDC_PARAM ORDER BY ID", false);
+        Utils.outln("findList=" + findList);
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        List<DbData> findList2 = testFindRows(mc,
+            "SELECT * FROM AUDC_PARAM " +
+                "WHERE "+
+                    "PARAM_NAME LIKE '%_@' "+
+                "ORDER BY ID",
+                true
+        );
+        Utils.outln("findList2=" + findList2);
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        List<DbData> findList3 = testFindRows(mc,
             "SELECT " +
-                "AUDC_TASK_PARAM.PARAM_VALUE, AUDC_TASK.*, AUDC_PARAM.* " +
-            "FROM AUDC_TASK_PARAM " +
-            "LEFT JOIN AUDC_TASK  ON AUDC_TASK.ID  = AUDC_TASK_PARAM.TASK_ID " +
-            "LEFT JOIN AUDC_PARAM ON AUDC_PARAM.ID = AUDC_TASK_PARAM.PARAM_ID";
+                    "CURATOR_ACTION, "+
+                    "DEFAULT_VALUE, "+
+                    "PARAM_DESCR "+
+                "FROM AUDC_PARAM " +
+                "WHERE "+
+                    "PARAM_NAME LIKE '%_@' "+
+                "ORDER BY ID",
+                false
+        );
+        Utils.outln("findList3=" + findList3);
+        Utils.outln("--------------------------------------------------------------------------------");
 
-        boolean actDs = mc.activateDSConnection();
-        Utils.outln("actDs=" + actDs);
+        List<Object> params = new ArrayList<>();
+        params.add("%_@");
+        List<DbData> findList4 = testFindRows(mc,
+            "SELECT " +
+                    "CURATOR_ACTION, "+
+                    "DEFAULT_VALUE, "+
+                    "PARAM_DESCR "+
+                "FROM AUDC_PARAM " +
+                "WHERE "+
+                    "PARAM_NAME NOT LIKE ? "+
+                "ORDER BY ID",
+                params,
+                false
+        );
+        Utils.outln("findList4=" + findList4);
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        String sql =
+                "SELECT " +
+                    "AUDC_TASK_PARAM.PARAM_VALUE, AUDC_TASK.*, AUDC_PARAM.* " +
+                "FROM AUDC_TASK_PARAM " +
+                "LEFT JOIN AUDC_TASK  ON AUDC_TASK.ID  = AUDC_TASK_PARAM.TASK_ID " +
+                "LEFT JOIN AUDC_PARAM ON AUDC_PARAM.ID = AUDC_TASK_PARAM.PARAM_ID";
         List<DbData> findList5 = testFindRows(mc, sql, true);
-        mc.deactivateDSConnection();
-
         Utils.outln("findList5=" + findList5);
         Utils.outln("--------------------------------------------------------------------------------");
+
+        List<DbData> deletedList = testDeleteRows(mc, createdList);
+        Utils.outln("deletedList=" + deletedList);
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        if (act) {
+            mc.deactivateDSConnection();
+        }
     }
 
     public static void main(String[] args) {
-        testDS();
+        long t0 = System.currentTimeMillis();
+        testDs(false);
+        long t1 = System.currentTimeMillis();
+        testDs(true);
+        long t2 = System.currentTimeMillis();
+
+        Utils.outln("Not act cons: dt=" + (t1 - t0));
+        Utils.outln("Act     cons: dt=" + (t2 - t1));
     }
 }

@@ -1,10 +1,15 @@
 package org.jmethod.mconnection;
 
+import static java.lang.Class.forName;
+
 import org.postgresql.util.PSQLException;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.sql.DataSource;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -39,16 +44,18 @@ public class MConnection {
 
     private static final String TABLES = "TABLES";
     private static final String DELIM = ",";
-    private static final String  ENV_CONTEXT_NAME = "java:comp/env";
+    //private static final String ENV_CONTEXT_NAME = "java:comp/env";
 
     private static final String IS_SEE__PREFIX = "java.sql.SQLSyntaxErrorException see=";
     private static final String IS_REL_NOT_EXIST__PREFIX = "relation not exist e=";
+
+    private static final String SET_URL = "setURL";
 
     private Connection connection;
     private String connectionError = null;
 
     // For DataSource MODE
-    private static Context context = null;
+    //private static Context context = null;
     private DataSource dataSource;
 
     // For Driver MODE
@@ -137,6 +144,8 @@ public class MConnection {
      * в 'Datasource' и возвращается в пул после использования.
      * Данный режим (Datasource) используется, как правило, для web-приложений.
      * @param dataSource Datasource
+     * @param login ("testLogin")
+     * @param password ("testPassword")
      * @param limitTyp (LIMIT | FETCH_FIRST | ROWS | ROWNUM | SELECT_FIRST)
      * @param idNames Names of relation id field - Map<String, String>,
      *               key - relation name or {DEFAULT}, value - sequences name. Default: "ID".
@@ -161,41 +170,124 @@ public class MConnection {
      */
     public static MConnection createMConnection(
         DataSource dataSource,
+        String login,
+        String password,
         String limitTyp,
         Map<String, String> idNames,
         Map<String, String> sequences
     ){
         MConnection mc = new MConnection();
+        mc.setDataSource(dataSource);
+        mc.login = login;
+        mc.password = password;
         mc.limitTyp = limitTyp;
         mc.idNames = idNames;
         mc.sequences = sequences;
-        mc.setDataSource(dataSource);
         return mc;
     }
 
-    public static DataSource getDataSource(String datasourceName){
-        Context envContext = getContext();
-        if (envContext == null){
+    //    public static DataSource getDataSource(String datasourceName){
+    //        Context envContext = getContext();
+    //        if (envContext == null){
+    //            return null;
+    //        }
+    //        try {
+    //            return ((DataSource) envContext.lookup(datasourceName));
+    //        } catch(Exception e){
+    //            e.printStackTrace();
+    //            return null;
+    //        }
+    //    }
+    //
+    //    private static Context getContext(){
+    //        if (context == null){
+    //            try {
+    //                context = (Context)((new InitialContext()).lookup(ENV_CONTEXT_NAME));
+    //            } catch( Exception e ){
+    //                context = null;
+    //                e.printStackTrace();
+    //            }
+    //        }
+    //        return context;
+    //    }
+
+    public static DataSource createDataSource(String dataSourceClassName, String url) {
+        DataSource dataSource = createDataSourceObject(dataSourceClassName, url);
+        if (dataSource == null) {
             return null;
         }
+
+        if (!setUrl(dataSource, url)) {
+            return null;
+        }
+        return dataSource;
+    }
+
+    private static DataSource createDataSourceObject(String dataSourceClassName, String url) {
         try {
-            return ((DataSource) envContext.lookup(datasourceName));
-        } catch(Exception e){
-            e.printStackTrace();
+            Class clazz = forName(dataSourceClassName);
+            Constructor constructor = clazz.getConstructor();
+            Object object = constructor.newInstance();
+            return (DataSource) object;
+        } catch(ClassNotFoundException cnf){
+            cnf.printStackTrace();
+            return null;
+        } catch(NoSuchMethodException e1) {
+            e1.printStackTrace();
+            return null;
+        } catch(SecurityException e2) {
+            e2.printStackTrace();
+            return null;
+        } catch(InstantiationException e3) {
+            e3.printStackTrace();
+            return null;
+        } catch(IllegalAccessException e4) {
+            e4.printStackTrace();
+            return null;
+        } catch(IllegalArgumentException e5) {
+            e5.printStackTrace();
+            return null;
+        } catch(InvocationTargetException e6) {
+            e6.printStackTrace();
             return null;
         }
     }
 
-    private static Context getContext(){
-        if (context == null){
-            try {
-                context = (Context)((new InitialContext()).lookup(ENV_CONTEXT_NAME));
-            } catch( Exception e ){
-                context = null;
-                e.printStackTrace();
+    private static boolean setUrl(DataSource dataSource, String url) {
+        // установка атрибута 'url' для объекта 'dataSource'.
+
+        if (dataSource == null || url == null || url.isEmpty()) {
+            return false;
+        }
+
+        // поиск метода: 'setURL'
+        Method setUrlMethod = null;
+        Method[] mets = dataSource.getClass().getMethods();
+        for (int i = 0; mets != null && i < mets.length; i++) {
+            if (SET_URL.equals(mets[i].getName())) {
+                setUrlMethod = mets[i];
+                break;
             }
         }
-        return context;
+        if (setUrlMethod == null) {
+            Utils.outln("Method " + SET_URL + " not found in class:'" + dataSource.getClass() + "'");
+            return false;
+        }
+
+        // вызов метода: 'setURL'
+        try {
+            setUrlMethod.invoke(dataSource, url);
+            return true;
+        } catch(IllegalAccessException e1) {
+            e1.printStackTrace();
+            return false;
+        } catch(IllegalArgumentException e2) {
+            e2.printStackTrace();
+            return false;
+        } catch(InvocationTargetException e3) {
+            e3.printStackTrace();
+            return false;
+        }
     }
 
     /**
@@ -260,12 +352,6 @@ public class MConnection {
         if (fieldNames == null || fieldNames.length == 0) {
             return new DbData(tableName, id);
         }
-        if (fieldNames.length == 1 && "*".equals(fieldNames[0])) {
-            fieldNames = getMetaDataTable(tableName);
-            if (fieldNames == null || fieldNames.length == 0) {
-                return new DbData(tableName, id);
-            }
-        }
 
         // Если режим 'DataSource', то берет из пула соединение, если это не сделано вышы (т.е. если соединение == null)
         ActivateResult activateResult = actDSCon(true, "read", "The row will not be read");
@@ -274,6 +360,12 @@ public class MConnection {
         }
 
         try {
+            if (fieldNames.length == 1 && "*".equals(fieldNames[0])) {
+                fieldNames = getMetaDataTable(tableName);
+                if (fieldNames == null || fieldNames.length == 0) {
+                    return new DbData(tableName, id);
+                }
+            }
             return readRow(tableName, id, fieldNames);
         } finally {
             // Если соединение бралось из DataSource, то оно возвращается
@@ -428,7 +520,7 @@ public class MConnection {
      * В режиме 'Datasource' получение соединения с БД ('connection') из пула соединений в 'Datasource',
      * которое после использования должно быть возвращено в пул методом: 'deactivateDSConnection'.
      * Если соединение уже выделено раньше (connection != null), то соединение не выделяется из пула,
-     * а предполагается, что будет использоваться уже выделенное соединение.
+     * а предполагается, что будет использоваться уже выделенное соединение. Это происходит автоматически.
      *
      * @param autoCommit - Auto commit flag
      * @return признак, что соединение было выделено.
@@ -450,7 +542,7 @@ public class MConnection {
         }
 
         try {
-            this.connection = this.dataSource.getConnection();
+            this.connection = this.dataSource.getConnection(this.login, this.password);
             //    if ( act_pas_log_flag ){
             //        Utils.outln( ">>>>>>>>>> act_DS_Con: this.getCon()="+this.getCon() );
             //    } // if
@@ -466,7 +558,7 @@ public class MConnection {
      * В режиме 'Datasource' получение соединения с БД ('connection') из пула соединений в 'Datasource',
      * которое после использования должно быть возвращено в пул методом: 'deactivateDSConnection'.
      * Если соединение уже выделено раньше (connection != null), то соединение не выделяется из пула,
-     * а предполагается, что будет использоваться уже выделенное соединение.
+     * а предполагается, что будет использоваться уже выделенное соединение. Это происходит автоматически.
      * Атрибут 'autoCommit' равен 'false'.
      *
      * @return признак, что соединение было выделено.
@@ -644,6 +736,38 @@ public class MConnection {
         );
     }
 
+    public boolean executeSqlScript(String sqlScript) {
+        if (sqlScript == null || sqlScript.isEmpty()) {
+            return false;
+        }
+
+        // Если режим 'DataSource', то берет из пула соединение, если это не сделано вышы (т.е. если соединение == null)
+        ActivateResult activateResult = actDSCon(true, "executeSqlScript",
+                "Can't execute sqlScript=" + sqlScript);
+        if (!activateResult.done){
+            return false;
+        }
+
+        PreparedStatement ps = null;
+        try {
+            ps = this.getConnection().prepareStatement(sqlScript);
+            ps.executeUpdate();
+            this.commit();
+            return true;
+        } catch(SQLException e) {
+            this.rollback();
+            Utils.outln("?? e=" + e);
+            e.printStackTrace();
+            return false;
+        } finally {
+            // Если соединение бралось из DataSource, то оно возвращается
+            if (activateResult.activated){
+                this.deactivateDSConnection();
+            }
+            closeRsPs(null, ps);
+        }
+    }
+
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
@@ -717,14 +841,29 @@ public class MConnection {
                 sql.append("INSERT INTO " + tableName + "( " + columns + " ) VALUES( " + quest + " )");
                 ps = this.connection.prepareStatement(sql.toString());
 
-                int delta = 2;
-                ps.setObject(1, insertedId);
+//                int delta = 2;
+//                ps.setObject(1, insertedId);
+//                for (int i = 0; i < values.size(); i++) {
+//                    Object value = values.get(i);
+//                    if ( value == null ){
+//                        ps.setObject( i + delta, value );
+//                    } else {
+//                        if ( value.getClass().equals( java.util.Date.class ) ){
+//                            java.util.Date date = ((java.util.Date) value);
+//                            ps.setDate(i + delta, new java.sql.Date(date.getTime()));
+//                        } else {
+//                            ps.setObject( i + delta, value);
+//                        }
+//                    }
+//                }
+
+                int delta = 1;
                 for (int i = 0; i < values.size(); i++) {
                     Object value = values.get(i);
                     if ( value == null ){
                         ps.setObject( i + delta, value );
                     } else {
-                        if ( value.getClass().equals( java.util.Date.class ) ){
+                        if (value.getClass().equals(java.util.Date.class)){
                             java.util.Date date = ((java.util.Date) value);
                             ps.setDate(i + delta, new java.sql.Date(date.getTime()));
                         } else {
@@ -732,6 +871,7 @@ public class MConnection {
                         }
                     }
                 }
+
                 ps.executeUpdate();
                 return insertedId;
             }
@@ -1205,7 +1345,7 @@ public class MConnection {
         }
     }
 
-    private static void closeRsPs(ResultSet rs, PreparedStatement ps){
+    public static void closeRsPs(ResultSet rs, PreparedStatement ps){
         try {
             if ( rs != null ){
                 rs.close();
