@@ -11,70 +11,34 @@ import java.util.Map;
 
 public class ExampleUtilsH2 {
 
-    /*
-    url: "jdbc:h2:mem:ib;MODE=PostgreSQL;INIT=CREATE SCHEMA IF NOT EXISTS audc\;SET SCHEMA audc\;create domain if not exists JSONB as other;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
-    */
+    // Сервер H2            : "jdbc:h2:tcp://localhost:9094/./dbH2/bank"
+    // Embeded файл './h2db': "jdbc:h2:./h2db";
+    // DB n memory:
+    public static final String URL = "jdbc:h2:mem:ib;\\MODE=PostgreSQL;\\INIT=CREATE SCHEMA IF NOT EXISTS audc\\;SET SCHEMA audc\\;create domain if not exists JSONB as other;\\DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
 
     public static final String DRIVER = "org.h2.Driver";
     public static final String DATA_SOURCE = "org.h2.jdbcx.JdbcDataSource";
-
-    //    public static final String URL = "jdbc:h2:mem:ib;MODE=PostgreSQL;INIT=CREATE SCHEMA IF NOT EXISTS audc\\;" +
-    //                                     "SET SCHEMA audc\\;create domain if not exists JSONB as other;" +
-    //                                     "DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
-
-    //    public static final String URL = "jdbc:h2:mem:ib;MODE=PostgreSQL;INIT=CREATE SCHEMA IF NOT EXISTS audc;" +
-    //            "SET SCHEMA audc;create domain if not exists JSONB as other;" +
-    //            "DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
-
-    //public static final String URL = "jdbc:h2:tcp://localhost:9094/./dbH2/bank";
-    //public static final String URL = "jdbc:h2:./h2db";
-    public static final String URL = "jdbc:h2:./mem";
-    //public static final String URL = "jdbc:h2:./h2db";
     public static final String LOGIN = "sa";
     public static final String PASSWORD = "";
     public static final Map<String, String> ID_NAMES = genIdNames();
     public static final Map<String, String> SEQUENCES = genSequences();
 
-    //    public static boolean testCreateTable(MConnection mc) {
-    //        String sqlScript = "CREATE SCHEMA AUDC AUTHORIZATION sa;";
-    //        boolean ok = mc.executeSqlScript(sqlScript);
-    //        //if (!ok) {
-    //        //    Utils.outln("Can't execute sqlScript=" + sqlScript);
-    //        //    return false;
-    //        //} else {
-    //        //    Utils.outln("Executed sqlScript=" + sqlScript);
-    //        //}
-    //        Utils.outln("Executed sqlScript=" + sqlScript);
-    //
-    //        sqlScript = "CREATE TABLE AUDC.AUDC_PARAM (\r\n" +
-    //                    "  ID             BIGINT PRIMARY KEY,\r\n" +
-    //                    "  CURATOR_ACTION VARCHAR(20),\r\n" +
-    //                    "  DEFAULT_VALUE  VARCHAR(100),\r\n" +
-    //                    "  PARAM_DESCR    VARCHAR(500),\r\n" +
-    //                    "  PARAM_NAME     VARCHAR(50),\r\n" +
-    //                    "  PARAM_TYPE     VARCHAR(10)\r\n" +
-    //                    ");";
-    //        ok = mc.executeSqlScript(sqlScript);
-    //        //    if (!ok) {
-    //        //        Utils.outln("Can't execute sqlScript=" + sqlScript);
-    //        //        return false;
-    //        //    } else {
-    //        //        Utils.outln("Executed sqlScript=" + sqlScript);
-    //        //    }
-    //        Utils.outln("Executed sqlScript=" + sqlScript);
-    //
-    //        sqlScript = "CREATE INDEX IDX__AUDC_PARAM__PARAM_NAME ON AUDC.AUDC_PARAM (PARAM_NAME)";
-    //        ok = mc.executeSqlScript(sqlScript);
-    //        //    if (!ok) {
-    //        //        Utils.outln("Can't execute sqlScript=" + sqlScript);
-    //        //        return false;
-    //        //    } else {
-    //        //        Utils.outln("Executed sqlScript=" + sqlScript);
-    //        //    }
-    //        Utils.outln("Executed sqlScript=" + sqlScript);
-    //
-    //        return true;
-    //    }
+    public static void testCreateTables(MConnection mc) {
+        String sqlScript =
+                //"CREATE SCHEMA AUDC AUTHORIZATION sa;\r\n" +
+                "CREATE TABLE AUDC_PARAM (\r\n" +
+                        "  ID             BIGINT PRIMARY KEY,\r\n" +
+                        "  CURATOR_ACTION VARCHAR(20),\r\n" +
+                        "  DEFAULT_VALUE  VARCHAR(100),\r\n" +
+                        "  PARAM_DESCR    VARCHAR(500),\r\n" +
+                        "  PARAM_NAME     VARCHAR(50),\r\n" +
+                        "  PARAM_TYPE     VARCHAR(10)\r\n" +
+                        ");\r\n" +
+                        "CREATE INDEX IDX__AUDC_PARAM__PARAM_NAME ON AUDC_PARAM (PARAM_NAME)";
+        boolean ok = mc.executeSqlScript(sqlScript);
+        Utils.outln(ok ? "sqlScript=" + sqlScript : "");
+        Utils.outln("--------------------------------------------------------------------------------");
+    }
 
     private static DbData testCreateRow(MConnection mc, String name, String val) {
         DbData dbd = new DbData("AUDC_PARAM");
@@ -92,8 +56,26 @@ public class ExampleUtilsH2 {
         return dbd;
     }
 
+    public static List<DbData> deleteAll(MConnection mc) {
+        FindData fd = mc.find("SELECT ID FROM AUDC_PARAM ORDER BY ID", false);
+
+        List<DbData> listResult = new ArrayList<>(3);
+        for (DbData dbData : fd.getDbDatas()) {
+            if (dbData.getDone()) {
+                DbData dbdResult = mc.delete("AUDC_PARAM", dbData.getObject(0), true);
+                if (dbdResult.getDone()) {
+                    Utils.outln("-- deleteAll: Удалена строка: dbdResult=" + dbdResult.toStr());
+                } else {
+                    Utils.outln("?? deleteAll: Не могу удалить строку: dbdResult=" + dbdResult.toStr());
+                }
+                listResult.add(dbdResult);
+            }
+        }
+        return listResult;
+    }
+
     private static DbData testCreateRowId(MConnection mc, Object id, String name, String val) {
-        DbData dbd = new DbData("AUDC.AUDC_PARAM");
+        DbData dbd = new DbData("AUDC_PARAM");
         dbd.setObject(mc.getIdName(dbd.getTableName()), id);
         dbd.setString("CURATOR_ACTION", "ARCHIVE");
         dbd.setString("DEFAULT_VALUE", val);
@@ -122,8 +104,7 @@ public class ExampleUtilsH2 {
         for (DbData dbData : list) {
             if (dbData.getDone()) {
                 //DbData dbdResult = mc.read(dbData.getTableName(), dbData.getId(), "*");
-                //DbData dbdResult = mc.read("AUDC." + dbData.getTableName(), dbData.getId(), "*");
-                DbData dbdResult = mc.read("AUDC.AUDC_PARAM", dbData.getId(), "*");
+                DbData dbdResult = mc.read("AUDC_PARAM", dbData.getId(), "*");
                 if (dbdResult.getDone()) {
                     Utils.outln("-- Прочитана строка: dbdResult=" + dbdResult.toStr());
                 } else {
@@ -136,7 +117,7 @@ public class ExampleUtilsH2 {
     }
 
     private static DbData testUpdateRow(MConnection mc, Object id, String name, String val, String type) {
-        DbData dbd = new DbData("AUDC.AUDC_PARAM", id);
+        DbData dbd = new DbData("AUDC_PARAM", id);
         dbd.setString("DEFAULT_VALUE", val);
         dbd.setString("PARAM_NAME", name);
         dbd.setString("PARAM_TYPE", type);
