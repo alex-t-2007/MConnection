@@ -22,7 +22,7 @@ public class ExampleUtils {
         DbData dbd = new DbData("AUDC_PARAM");
         dbd.setString("CURATOR_ACTION", "ARCHIVE");
         dbd.setString("DEFAULT_VALUE", val);
-        dbd.setString("PARAM_DESCR", "Период создания нового индекса");
+        dbd.setString("PARAM_DESCR", "Period of new index creation");
         dbd.setString("PARAM_NAME", name);
         dbd.setString("PARAM_TYPE", "INT");
         dbd = mc.create(dbd, true);
@@ -84,11 +84,11 @@ public class ExampleUtils {
         FindData fd = mc.find(sql, tnFlag);
 
         if (fd.getQuant() <= 0) {
-            Utils.outln("?? Строки не найдены: sql=" + sql);
+            Utils.outln("?? Rows not found: sql=" + sql);
             return fd.getDbDatas();
         }
         for (DbData dbData : fd.getDbDatas()) {
-            Utils.outln("-- Найденная строка: dbData=" + dbData.toStr());
+            Utils.outln("-- Found row: dbData=" + dbData.toStr());
         }
         return fd.getDbDatas();
     }
@@ -97,11 +97,11 @@ public class ExampleUtils {
         FindData fd = mc.find(sql, params, tnFlag);
 
         if (fd.getQuant() <= 0) {
-            Utils.outln("?? Строки не найдены: sql=" + sql);
+            Utils.outln("?? Rows not found: sql=" + sql);
             return fd.getDbDatas();
         }
         for (DbData dbData : fd.getDbDatas()) {
-            Utils.outln("-- Найденная строка: dbData=" + dbData.toStr());
+            Utils.outln("-- Found row: dbData=" + dbData.toStr());
         }
         return fd.getDbDatas();
     }

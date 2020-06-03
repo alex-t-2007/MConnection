@@ -52,14 +52,14 @@ public class TestUtils {
         DbData dbd = new DbData("AUDC_PARAM");
         dbd.setString("CURATOR_ACTION", "ARCHIVE");
         dbd.setString("DEFAULT_VALUE", val);
-        dbd.setString("PARAM_DESCR", "Период создания нового индекса");
+        dbd.setString("PARAM_DESCR", "Period of new index creation");
         dbd.setString("PARAM_NAME", name);
         dbd.setString("PARAM_TYPE", "INT");
         dbd = mc.create(dbd, true);
         if (dbd.getDone()) {
-            Utils.outln("-- Создана строка: dbd=" + dbd.toStr());
+            Utils.outln("-- Created row: dbd=" + dbd.toStr());
         } else {
-            Utils.outln("?? Не могу создать строку: dbd=" + dbd.toStr());
+            Utils.outln("?? Can't create row: dbd=" + dbd.toStr());
         }
         return dbd;
     }
@@ -72,9 +72,9 @@ public class TestUtils {
             if (dbData.getDone()) {
                 DbData dbdResult = mc.delete("AUDC_PARAM", dbData.getObject(0), true);
                 if (dbdResult.getDone()) {
-                    Utils.outln("-- deleteAll: Удалена строка: dbdResult=" + dbdResult.toStr());
+                    Utils.outln("-- deleteAll: Deleted row: dbdResult=" + dbdResult.toStr());
                 } else {
-                    Utils.outln("?? deleteAll: Не могу удалить строку: dbdResult=" + dbdResult.toStr());
+                    Utils.outln("?? deleteAll: Can't delete row: dbdResult=" + dbdResult.toStr());
                 }
                 listResult.add(dbdResult);
             }
@@ -87,14 +87,14 @@ public class TestUtils {
         dbd.setObject(mc.getIdName(dbd.getTableName()), id);
         dbd.setString("CURATOR_ACTION", "ARCHIVE");
         dbd.setString("DEFAULT_VALUE", val);
-        dbd.setString("PARAM_DESCR", "Период создания нового индекса");
+        dbd.setString("PARAM_DESCR", "Period of new index creation");
         dbd.setString("PARAM_NAME", name);
         dbd.setString("PARAM_TYPE", "INT");
         dbd = mc.create(dbd, true);
         if (dbd.getDone()) {
-            Utils.outln("-- Создана строка: dbd=" + dbd.toStr());
+            Utils.outln("-- Created row: dbd=" + dbd.toStr());
         } else {
-            Utils.outln("?? Не могу создать строку: dbd=" + dbd.toStr());
+            Utils.outln("?? Can't create row: dbd=" + dbd.toStr());
         }
         return dbd;
     }
@@ -114,9 +114,9 @@ public class TestUtils {
                 //DbData dbdResult = mc.read(dbData.getTableName(), dbData.getId(), "*");
                 DbData dbdResult = mc.read("AUDC_PARAM", dbData.getId(), "*");
                 if (dbdResult.getDone()) {
-                    Utils.outln("-- Прочитана строка: dbdResult=" + dbdResult.toStr());
+                    Utils.outln("-- Readed row: dbdResult=" + dbdResult.toStr());
                 } else {
-                    Utils.outln("?? Не могу прочитать строку: dbdResult=" + dbdResult.toStr());
+                    Utils.outln("?? Can't read row: dbdResult=" + dbdResult.toStr());
                 }
                 listResult.add(dbdResult);
             }
@@ -131,9 +131,9 @@ public class TestUtils {
         dbd.setString("PARAM_TYPE", type);
         dbd = mc.update(dbd, true);
         if (dbd.getDone()) {
-            Utils.outln("-- Модифицирована строка: dbd=" + dbd.toStr());
+            Utils.outln("-- Updated row: dbd=" + dbd.toStr());
         } else {
-            Utils.outln("?? Не могу модифицировать строку: dbd=" + dbd.toStr());
+            Utils.outln("?? Can't update row: dbd=" + dbd.toStr());
         }
         return dbd;
     }
@@ -150,11 +150,11 @@ public class TestUtils {
         FindData fd = mc.find(sql, tnFlag);
 
         if (fd.getQuant() <= 0) {
-            Utils.outln("?? Строки не найдены: sql=" + sql);
+            Utils.outln("?? Rows not found: sql=" + sql);
             return fd.getDbDatas();
         }
         for (DbData dbData : fd.getDbDatas()) {
-            Utils.outln("-- Найденная строка: dbData=" + dbData.toStr());
+            Utils.outln("-- Found row: dbData=" + dbData.toStr());
         }
         return fd.getDbDatas();
     }
@@ -163,11 +163,11 @@ public class TestUtils {
         FindData fd = mc.find(sql, params, tnFlag);
 
         if (fd.getQuant() <= 0) {
-            Utils.outln("?? Строки не найдены: sql=" + sql);
+            Utils.outln("?? Rows not found: sql=" + sql);
             return fd.getDbDatas();
         }
         for (DbData dbData : fd.getDbDatas()) {
-            Utils.outln("-- Найденная строка: dbData=" + dbData.toStr());
+            Utils.outln("-- Found row: dbData=" + dbData.toStr());
         }
         return fd.getDbDatas();
     }
@@ -178,9 +178,9 @@ public class TestUtils {
             if (dbData.getDone()) {
                 DbData dbdResult = mc.delete(dbData.getTableName(), dbData.getId(), true);
                 if (dbdResult.getDone()) {
-                    Utils.outln("-- Удалена строка: dbdResult=" + dbdResult.toStr());
+                    Utils.outln("-- Deleted row: dbdResult=" + dbdResult.toStr());
                 } else {
-                    Utils.outln("?? Не могу удалить строку: dbdResult=" + dbdResult.toStr());
+                    Utils.outln("?? Can't delete row: dbdResult=" + dbdResult.toStr());
                 }
                 listResult.add(dbdResult);
             }

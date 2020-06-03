@@ -33,11 +33,11 @@ public class DataSourceExample {
         FindData fd = mc.find(sql, tnFlag);
 
         if (fd.getQuant() <= 0) {
-            Utils.outln("?? Строки не найдены: sql=" + sql);
+            Utils.outln("?? Row not found: sql=" + sql);
             return fd.getDbDatas();
         }
         for (DbData dbData : fd.getDbDatas()) {
-            Utils.outln("-- Найденная строка: dbData=" + dbData.toStr());
+            Utils.outln("-- Found row: dbData=" + dbData.toStr());
         }
         return fd.getDbDatas();
     }
@@ -46,11 +46,11 @@ public class DataSourceExample {
         FindData fd = mc.find(sql, params, tnFlag);
 
         if (fd.getQuant() <= 0) {
-            Utils.outln("?? Строки не найдены: sql=" + sql);
+            Utils.outln("?? Row not found: sql=" + sql);
             return fd.getDbDatas();
         }
         for (DbData dbData : fd.getDbDatas()) {
-            Utils.outln("-- Найденная строка: dbData=" + dbData.toStr());
+            Utils.outln("-- Found row: dbData=" + dbData.toStr());
         }
         return fd.getDbDatas();
     }

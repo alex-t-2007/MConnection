@@ -1,16 +1,16 @@
 package org.jmethod.mconnection;
 
-import static org.jmethod.mconnection.ExampleUtilsH2.deleteAll;
-import static org.jmethod.mconnection.ExampleUtilsH2.testCreateRows;
-import static org.jmethod.mconnection.ExampleUtilsH2.testCreateTables;
-import static org.jmethod.mconnection.ExampleUtilsH2.testDropTables;
-import static org.jmethod.mconnection.ExampleUtilsH2.testReadRows;
-import static org.jmethod.mconnection.ExampleUtilsH2.testUpdateRows;
+import static org.jmethod.mconnection.TestUtils.deleteAll;
+import static org.jmethod.mconnection.TestUtils.testCreateRows;
+import static org.jmethod.mconnection.TestUtils.testCreateTables;
+import static org.jmethod.mconnection.TestUtils.testDropTables;
+import static org.jmethod.mconnection.TestUtils.testReadRows;
+import static org.jmethod.mconnection.TestUtils.testUpdateRows;
+
 import static org.jmethod.mconnection.MConnection.LIMIT;
 import static org.jmethod.mconnection.MConnection.createDataSource;
 import org.testng.annotations.Test;
 
-import java.sql.SQLException;
 import java.util.List;
 
 public class MConnectionTest {
@@ -54,8 +54,6 @@ public class MConnectionTest {
         test(ModeType.DRIVER, false);
         long t9 = System.currentTimeMillis();
 
-        Utils.outln("--------------------------------------------------------------------------------");
-
         Utils.outln("");
         Utils.outln("## Data source mode: ##########");
         Utils.outln("1. act=" + act1 + " time (ms)=" + (t1 - t0));
@@ -73,26 +71,26 @@ public class MConnectionTest {
 
     private static MConnection testDSCreateMConnection(){
         return MConnection.createMConnection(
-            createDataSource(ExampleUtilsH2.DATA_SOURCE, ExampleUtilsH2.URL),
-            ExampleUtilsH2.LOGIN,
-            ExampleUtilsH2.PASSWORD,
+            createDataSource(TestUtils.DATA_SOURCE, TestUtils.URL),
+            TestUtils.LOGIN,
+            TestUtils.PASSWORD,
             LIMIT,
-            ExampleUtilsH2.ID_NAMES,
-            ExampleUtilsH2.SEQUENCES
+            TestUtils.ID_NAMES,
+            TestUtils.SEQUENCES
         );
     }
 
     private static MConnection testDriverCreateMConnection() {
         MConnection mc = MConnection.createMConnection(
-            ExampleUtilsH2.DRIVER,
-            ExampleUtilsH2.URL,
-            ExampleUtilsH2.LOGIN,
-            ExampleUtilsH2.PASSWORD,
+            TestUtils.DRIVER,
+            TestUtils.URL,
+            TestUtils.LOGIN,
+            TestUtils.PASSWORD,
             LIMIT,
-            ExampleUtilsH2.ID_NAMES,
-            ExampleUtilsH2.SEQUENCES
+            TestUtils.ID_NAMES,
+            TestUtils.SEQUENCES
         );
-        Utils.outln("ExampleUtilsH2.URL=" + ExampleUtilsH2.URL);
+        Utils.outln("TestUtils.URL=" + TestUtils.URL);
         return mc;
     }
 
@@ -100,11 +98,11 @@ public class MConnectionTest {
         FindData fd = mc.find(sql, tnFlag);
 
         if (fd.getQuant() <= 0) {
-            Utils.outln("?? Строки не найдены: sql=" + sql);
+            Utils.outln("?? Rows not found: sql=" + sql);
             return fd.getDbDatas();
         }
         for (DbData dbData : fd.getDbDatas()) {
-            Utils.outln("-- Найденная строка: dbData=" + dbData.toStr());
+            Utils.outln("-- Found row: dbData=" + dbData.toStr());
         }
         return fd.getDbDatas();
     }
@@ -113,11 +111,11 @@ public class MConnectionTest {
         FindData fd = mc.find(sql, params, tnFlag);
 
         if (fd.getQuant() <= 0) {
-            Utils.outln("?? Строки не найдены: sql=" + sql);
+            Utils.outln("?? Rows not found: sql=" + sql);
             return fd.getDbDatas();
         }
         for (DbData dbData : fd.getDbDatas()) {
-            Utils.outln("-- Найденная строка: dbData=" + dbData.toStr());
+            Utils.outln("-- Found row: dbData=" + dbData.toStr());
         }
         return fd.getDbDatas();
     }
@@ -128,6 +126,10 @@ public class MConnectionTest {
     }
 
     private static void test(ModeType modeType, boolean actType) {
+        Utils.outln("");
+        Utils.outln(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+        Utils.outln(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+        Utils.outln(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
         MConnection mc;
         boolean actived = false;
 
@@ -220,72 +222,16 @@ public class MConnectionTest {
         Utils.outln("--------------------------------------------------------------------------------");
 
         if (modeType == ModeType.DRIVER) {
-            try {
-                mc.getConnection().close();
-                Utils.outln("mc.getConnection().close(): mc.getConnection()=" + mc.getConnection());
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            boolean ok = mc.closeConnection();
+            Utils.outln("mc.closeConnection(): ok=" + ok);
         } else {
             if (actived) {
-                mc.deactivateDSConnection();
-                Utils.outln("mc.deactivateDSConnection(): mc.getConnection()=" + mc.getConnection());
+                boolean ok = mc.deactivateDSConnection();
+                Utils.outln("mc.deactivateDSConnection(): ok=" + ok);
             }
         }
+        Utils.outln("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+        Utils.outln("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+        Utils.outln("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
     }
-
-    //    public static void main(String[] args) {
-    //        long t0 = System.currentTimeMillis();
-    //
-    //        // Data source mode:
-    //        boolean act1 = true;
-    //        test(ModeType.DATA_SOURCE, act1);
-    //        long t1 = System.currentTimeMillis();
-    //
-    //        boolean act2 = false;
-    //        test(ModeType.DATA_SOURCE, act2);
-    //        long t2 = System.currentTimeMillis();
-    //
-    //        boolean act3 = true;
-    //        test(ModeType.DATA_SOURCE, act3);
-    //        long t3 = System.currentTimeMillis();
-    //
-    //        boolean act4 = false;
-    //        test(ModeType.DATA_SOURCE, act4);
-    //        long t4 = System.currentTimeMillis();
-    //
-    //        boolean act5 = true;
-    //        test(ModeType.DATA_SOURCE, act5);
-    //        long t5 = System.currentTimeMillis();
-    //
-    //        boolean act6 = false;
-    //        test(ModeType.DATA_SOURCE, act6);
-    //        long t6 = System.currentTimeMillis();
-    //
-    //        // Driver mode:
-    //        test(ModeType.DRIVER, false);
-    //        long t7 = System.currentTimeMillis();
-    //
-    //        test(ModeType.DRIVER, false);
-    //        long t8 = System.currentTimeMillis();
-    //
-    //        test(ModeType.DRIVER, false);
-    //        long t9 = System.currentTimeMillis();
-    //
-    //        Utils.outln("--------------------------------------------------------------------------------");
-    //
-    //        Utils.outln("");
-    //        Utils.outln("## Data source mode: ##########");
-    //        Utils.outln("1. act=" + act1 + " time (ms)=" + (t1 - t0));
-    //        Utils.outln("2. act=" + act2 + " time (ms)=" + (t2 - t1));
-    //        Utils.outln("3. act=" + act3 + " time (ms)=" + (t3 - t2));
-    //        Utils.outln("4. act=" + act4 + " time (ms)=" + (t4 - t3));
-    //        Utils.outln("5. act=" + act5 + " time (ms)=" + (t5 - t4));
-    //        Utils.outln("6. act=" + act6 + " time (ms)=" + (t6 - t5));
-    //        Utils.outln("");
-    //        Utils.outln("## Diriver mode: ##############");
-    //        Utils.outln("7. time (ms)=" + (t7 - t6));
-    //        Utils.outln("8. time (ms)=" + (t8 - t7));
-    //        Utils.outln("9. time (ms)=" + (t9 - t8));
-    //    }
 }
