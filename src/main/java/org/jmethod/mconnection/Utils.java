@@ -1,7 +1,5 @@
 package org.jmethod.mconnection;
 
-import javax.sound.midi.InvalidMidiDataException;
-import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;

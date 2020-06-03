@@ -2,10 +2,6 @@ package org.jmethod.mconnection;
 
 import static java.lang.Class.forName;
 
-import org.postgresql.util.PSQLException;
-
-import javax.naming.Context;
-import javax.naming.InitialContext;
 import javax.sql.DataSource;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -19,12 +15,10 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * The MConnection package is a set of Java utility classes for easing JDBC development.

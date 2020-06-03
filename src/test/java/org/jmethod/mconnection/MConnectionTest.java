@@ -8,11 +8,68 @@ import static org.jmethod.mconnection.ExampleUtilsH2.testReadRows;
 import static org.jmethod.mconnection.ExampleUtilsH2.testUpdateRows;
 import static org.jmethod.mconnection.MConnection.LIMIT;
 import static org.jmethod.mconnection.MConnection.createDataSource;
+import org.testng.annotations.Test;
 
 import java.sql.SQLException;
 import java.util.List;
 
-public class DataSourceExampleH2 {
+public class MConnectionTest {
+
+    @Test
+    public void mainTest() {
+        long t0 = System.currentTimeMillis();
+
+        // Data source mode:
+        boolean act1 = true;
+        test(ModeType.DATA_SOURCE, act1);
+        long t1 = System.currentTimeMillis();
+
+        boolean act2 = false;
+        test(ModeType.DATA_SOURCE, act2);
+        long t2 = System.currentTimeMillis();
+
+        boolean act3 = true;
+        test(ModeType.DATA_SOURCE, act3);
+        long t3 = System.currentTimeMillis();
+
+        boolean act4 = false;
+        test(ModeType.DATA_SOURCE, act4);
+        long t4 = System.currentTimeMillis();
+
+        boolean act5 = true;
+        test(ModeType.DATA_SOURCE, act5);
+        long t5 = System.currentTimeMillis();
+
+        boolean act6 = false;
+        test(ModeType.DATA_SOURCE, act6);
+        long t6 = System.currentTimeMillis();
+
+        // Driver mode:
+        test(ModeType.DRIVER, false);
+        long t7 = System.currentTimeMillis();
+
+        test(ModeType.DRIVER, false);
+        long t8 = System.currentTimeMillis();
+
+        test(ModeType.DRIVER, false);
+        long t9 = System.currentTimeMillis();
+
+        Utils.outln("--------------------------------------------------------------------------------");
+
+        Utils.outln("");
+        Utils.outln("## Data source mode: ##########");
+        Utils.outln("1. act=" + act1 + " time (ms)=" + (t1 - t0));
+        Utils.outln("2. act=" + act2 + " time (ms)=" + (t2 - t1));
+        Utils.outln("3. act=" + act3 + " time (ms)=" + (t3 - t2));
+        Utils.outln("4. act=" + act4 + " time (ms)=" + (t4 - t3));
+        Utils.outln("5. act=" + act5 + " time (ms)=" + (t5 - t4));
+        Utils.outln("6. act=" + act6 + " time (ms)=" + (t6 - t5));
+        Utils.outln("");
+        Utils.outln("## Diriver mode: ##############");
+        Utils.outln("7. time (ms)=" + (t7 - t6));
+        Utils.outln("8. time (ms)=" + (t8 - t7));
+        Utils.outln("9. time (ms)=" + (t9 - t8));
+    }
 
     private static MConnection testDSCreateMConnection(){
         return MConnection.createMConnection(
@@ -177,59 +234,58 @@ public class DataSourceExampleH2 {
         }
     }
 
-    public static void main(String[] args) {
-        long t0 = System.currentTimeMillis();
-
-        // Data source mode:
-        boolean act1 = true;
-        test(ModeType.DATA_SOURCE, act1);
-        long t1 = System.currentTimeMillis();
-
-        boolean act2 = false;
-        test(ModeType.DATA_SOURCE, act2);
-        long t2 = System.currentTimeMillis();
-
-        boolean act3 = true;
-        test(ModeType.DATA_SOURCE, act3);
-        long t3 = System.currentTimeMillis();
-
-        boolean act4 = false;
-        test(ModeType.DATA_SOURCE, act4);
-        long t4 = System.currentTimeMillis();
-
-        boolean act5 = true;
-        test(ModeType.DATA_SOURCE, act5);
-        long t5 = System.currentTimeMillis();
-
-        boolean act6 = false;
-        test(ModeType.DATA_SOURCE, act6);
-        long t6 = System.currentTimeMillis();
-
-        // Driver mode:
-        test(ModeType.DRIVER, false);
-        long t7 = System.currentTimeMillis();
-
-        test(ModeType.DRIVER, false);
-        long t8 = System.currentTimeMillis();
-
-        test(ModeType.DRIVER, false);
-        long t9 = System.currentTimeMillis();
-
-        Utils.outln("--------------------------------------------------------------------------------");
-
-        Utils.outln("");
-        Utils.outln("## Data source mode: ##########");
-        Utils.outln("1. act=" + act1 + " time (ms)=" + (t1 - t0));
-        Utils.outln("2. act=" + act2 + " time (ms)=" + (t2 - t1));
-        Utils.outln("3. act=" + act3 + " time (ms)=" + (t3 - t2));
-        Utils.outln("4. act=" + act4 + " time (ms)=" + (t4 - t3));
-        Utils.outln("5. act=" + act5 + " time (ms)=" + (t5 - t4));
-        Utils.outln("6. act=" + act6 + " time (ms)=" + (t6 - t5));
-        Utils.outln("");
-        Utils.outln("## Diriver mode: ##############");
-        Utils.outln("7. time (ms)=" + (t7 - t6));
-        Utils.outln("8. time (ms)=" + (t8 - t7));
-        Utils.outln("9. time (ms)=" + (t9 - t8));
-    }
-
+    //    public static void main(String[] args) {
+    //        long t0 = System.currentTimeMillis();
+    //
+    //        // Data source mode:
+    //        boolean act1 = true;
+    //        test(ModeType.DATA_SOURCE, act1);
+    //        long t1 = System.currentTimeMillis();
+    //
+    //        boolean act2 = false;
+    //        test(ModeType.DATA_SOURCE, act2);
+    //        long t2 = System.currentTimeMillis();
+    //
+    //        boolean act3 = true;
+    //        test(ModeType.DATA_SOURCE, act3);
+    //        long t3 = System.currentTimeMillis();
+    //
+    //        boolean act4 = false;
+    //        test(ModeType.DATA_SOURCE, act4);
+    //        long t4 = System.currentTimeMillis();
+    //
+    //        boolean act5 = true;
+    //        test(ModeType.DATA_SOURCE, act5);
+    //        long t5 = System.currentTimeMillis();
+    //
+    //        boolean act6 = false;
+    //        test(ModeType.DATA_SOURCE, act6);
+    //        long t6 = System.currentTimeMillis();
+    //
+    //        // Driver mode:
+    //        test(ModeType.DRIVER, false);
+    //        long t7 = System.currentTimeMillis();
+    //
+    //        test(ModeType.DRIVER, false);
+    //        long t8 = System.currentTimeMillis();
+    //
+    //        test(ModeType.DRIVER, false);
+    //        long t9 = System.currentTimeMillis();
+    //
+    //        Utils.outln("--------------------------------------------------------------------------------");
+    //
+    //        Utils.outln("");
+    //        Utils.outln("## Data source mode: ##########");
+    //        Utils.outln("1. act=" + act1 + " time (ms)=" + (t1 - t0));
+    //        Utils.outln("2. act=" + act2 + " time (ms)=" + (t2 - t1));
+    //        Utils.outln("3. act=" + act3 + " time (ms)=" + (t3 - t2));
+    //        Utils.outln("4. act=" + act4 + " time (ms)=" + (t4 - t3));
+    //        Utils.outln("5. act=" + act5 + " time (ms)=" + (t5 - t4));
+    //        Utils.outln("6. act=" + act6 + " time (ms)=" + (t6 - t5));
+    //        Utils.outln("");
+    //        Utils.outln("## Diriver mode: ##############");
+    //        Utils.outln("7. time (ms)=" + (t7 - t6));
+    //        Utils.outln("8. time (ms)=" + (t8 - t7));
+    //        Utils.outln("9. time (ms)=" + (t9 - t8));
+    //    }
 }

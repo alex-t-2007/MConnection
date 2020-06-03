@@ -3,7 +3,6 @@ package org.jmethod.mconnection;
 import static org.jmethod.mconnection.MConnection.DEFAULT;
 import static org.jmethod.mconnection.MConnection.ID;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +34,15 @@ public class ExampleUtilsH2 {
                         "  PARAM_TYPE     VARCHAR(10)\r\n" +
                         ");\r\n" +
                         "CREATE INDEX IDX__AUDC_PARAM__PARAM_NAME ON AUDC_PARAM (PARAM_NAME)";
+        boolean ok = mc.executeSqlScript(sqlScript);
+        Utils.outln(ok ? "sqlScript=" + sqlScript : "");
+        Utils.outln("--------------------------------------------------------------------------------");
+    }
+
+    public static void testDropTables(MConnection mc) {
+        String sqlScript =
+            "DROP INDEX IDX__AUDC_PARAM__PARAM_NAME;\r\n" +
+            "DROP TABLE AUDC_PARAM;";
         boolean ok = mc.executeSqlScript(sqlScript);
         Utils.outln(ok ? "sqlScript=" + sqlScript : "");
         Utils.outln("--------------------------------------------------------------------------------");
