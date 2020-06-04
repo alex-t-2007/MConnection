@@ -5,7 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <name>MConnection Lib</name>
-    <groupId>org.example</groupId>
+    <!--<groupId>org.example</groupId>-->
+    <groupId>org.jmethod</groupId>
     <artifactId>MConnection</artifactId>
     <!--<version>1.0-SNAPSHOT</version>-->
     <version>1.0.0</version>

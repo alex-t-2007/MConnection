@@ -8,11 +8,11 @@ public class FindData {
     private String exStr = null;
 
     // create
-    public static FindData createFindData(List<DbData> dbDatas){
-        FindData fd = new FindData();
-        fd.dbDatas = dbDatas;
-        return fd;
-    } // createFindData
+    //    public static FindData createFindData(List<DbData> dbDatas){
+    //        FindData fd = new FindData();
+    //        fd.dbDatas = dbDatas;
+    //        return fd;
+    //    }
 
     public void setDbDatas(List<DbData> dbDatas) {
         this.dbDatas = dbDatas;

@@ -38,7 +38,6 @@ public class MConnection {
 
     private static final String TABLES = "TABLES";
     private static final String DELIM = ",";
-    //private static final String ENV_CONTEXT_NAME = "java:comp/env";
 
     private static final String IS_SEE__PREFIX = "java.sql.SQLSyntaxErrorException see=";
     private static final String IS_REL_NOT_EXIST__PREFIX = "relation not exist e=";
@@ -49,7 +48,6 @@ public class MConnection {
     private String connectionError = null;
 
     // For DataSource MODE
-    //private static Context context = null;
     private DataSource dataSource;
 
     // For Driver MODE
@@ -180,30 +178,47 @@ public class MConnection {
         return mc;
     }
 
-    //    public static DataSource getDataSource(String datasourceName){
-    //        Context envContext = getContext();
-    //        if (envContext == null){
-    //            return null;
-    //        }
-    //        try {
-    //            return ((DataSource) envContext.lookup(datasourceName));
-    //        } catch(Exception e){
-    //            e.printStackTrace();
-    //            return null;
-    //        }
-    //    }
-    //
-    //    private static Context getContext(){
-    //        if (context == null){
-    //            try {
-    //                context = (Context)((new InitialContext()).lookup(ENV_CONTEXT_NAME));
-    //            } catch( Exception e ){
-    //                context = null;
-    //                e.printStackTrace();
-    //            }
-    //        }
-    //        return context;
-    //    }
+    /**
+     * Создание объекта 'MConnection' в режиме 'Datasource'.
+     * При этом соединение с БД ('connection') не создается, а берется по мере надобности из пула соединений
+     * в 'Datasource' и возвращается в пул после использования.
+     * Данный режим (Datasource) используется, как правило, для web-приложений.
+     * @param dataSource Datasource
+     * @param limitTyp (LIMIT | FETCH_FIRST | ROWS | ROWNUM | SELECT_FIRST)
+     * @param idNames Names of relation id field - Map<String, String>,
+     *               key - relation name or {DEFAULT}, value - sequences name. Default: "ID".
+     *     Examples:
+     *         Map<String, String> idNames = new HashMap<>();
+     *         idNames.put(DEFAULT, ID);
+     *         idNames.put("AUDC_PCLIB_BUSINESS_OBJECT", "SYSNAME");
+     *         idNames.put("AUDC_PCLIB_BUSINESS_OPERATIONS", "SYSNAME");
+     *         idNames.put("AUDC_PCLIB_BUSINESS_SERVICE", "SYSNAME");
+     *         idNames.put("AUDC_TASK_PARAM", "SYSNAME");
+     * @param sequences - Map<String, String>, key - relation name, value - sequences name
+     *     Examples:
+     *         Map<String, String> sequences = new HashMap<>();
+     *         sequences.put("AUDC_ACLIB_ACTOR_ACCOUNT", "audc_aclib_actor_account_id_seq");
+     *         sequences.put("AUDC_ACLIB_CLIENT_IP_RANGE", "audc_aclib_client_ip_range_id_seq");
+     *         sequences.put("AUDC_ACLIB_ROLE_WORKPLACE", "audc_aclib_role_workplace_id_seq");
+     *         sequences.put("AUDC_PARAM", "audc_param_seq");
+     *         sequences.put("AUDC_TASK", "audc_task_seq");
+     *         sequences.put("AUDC_USER", "audc_user_seq");
+     *
+     * @return MConnectio object
+     */
+    public static MConnection createMConnection(
+        DataSource dataSource,
+        String limitTyp,
+        Map<String, String> idNames,
+        Map<String, String> sequences
+    ){
+        MConnection mc = new MConnection();
+        mc.setDataSource(dataSource);
+        mc.limitTyp = limitTyp;
+        mc.idNames = idNames;
+        mc.sequences = sequences;
+        return mc;
+    }
 
     public static DataSource createDataSource(String dataSourceClassName, String url) {
         DataSource dataSource = createDataSourceObject(dataSourceClassName, url);
@@ -214,6 +229,21 @@ public class MConnection {
         if (!setUrl(dataSource, url)) {
             return null;
         }
+        return dataSource;
+    }
+
+    public static DataSource createDataSource(String dataSourceClassName, String url, String user, String password) {
+        DataSource dataSource = createDataSourceObject(dataSourceClassName, url);
+        if (dataSource == null) {
+            return null;
+        }
+
+        if (!setUrl(dataSource, url)) {
+            return null;
+        }
+        setUser(dataSource, user);
+        setPassword(dataSource, password);
+
         return dataSource;
     }
 
@@ -249,28 +279,34 @@ public class MConnection {
 
     private static boolean setUrl(DataSource dataSource, String url) {
         // установка атрибута 'url' для объекта 'dataSource'.
+        return invokeSetStringMethod(dataSource, "setURL", url);
+    }
 
-        if (dataSource == null || url == null || url.isEmpty()) {
+    private static boolean setUser(DataSource dataSource, String user) {
+        // установка атрибута 'user' для объекта 'dataSource'.
+        return invokeSetStringMethod(dataSource, "setUser", user);
+    }
+
+    private static boolean setPassword(DataSource dataSource, String password) {
+        // установка атрибута 'password' для объекта 'dataSource'.
+        return invokeSetStringMethod(dataSource, "setPassword", password);
+    }
+
+    private static boolean invokeSetStringMethod(DataSource dataSource, String methodName, String param) {
+        if (dataSource == null || methodName == null || methodName.isEmpty()) {
             return false;
         }
 
-        // поиск метода: 'setURL'
-        Method setUrlMethod = null;
-        Method[] mets = dataSource.getClass().getMethods();
-        for (int i = 0; mets != null && i < mets.length; i++) {
-            if (SET_URL.equals(mets[i].getName())) {
-                setUrlMethod = mets[i];
-                break;
-            }
-        }
-        if (setUrlMethod == null) {
-            Utils.outln("Method " + SET_URL + " not found in class:'" + dataSource.getClass() + "'");
+        // поиск метода: 'methodName'
+        Method method = getMethod(dataSource, methodName);
+        if (method == null) {
+            Utils.outln("Method " + methodName + " not found in class:'" + dataSource.getClass() + "'");
             return false;
         }
 
-        // вызов метода: 'setURL'
+        // вызов метода: 'methodName'
         try {
-            setUrlMethod.invoke(dataSource, url);
+            method.invoke(dataSource, param);
             return true;
         } catch(IllegalAccessException e1) {
             e1.printStackTrace();
@@ -282,6 +318,24 @@ public class MConnection {
             e3.printStackTrace();
             return false;
         }
+    }
+
+    private static Method getMethod(DataSource dataSource, String methodName) {
+        if (dataSource == null || methodName == null || methodName.isEmpty()) {
+            return null;
+        }
+
+        Method[] methods = dataSource.getClass().getMethods();
+        if (methods == null) {
+            return null;
+        }
+
+        for (Method method : methods) {
+            if (method != null && methodName.equals(method.getName())) {
+                return method;
+            }
+        }
+        return null;
     }
 
     /**
@@ -546,7 +600,11 @@ public class MConnection {
         }
 
         try {
-            this.connection = this.dataSource.getConnection(this.login, this.password);
+            if (this.login == null) {
+                this.connection = this.dataSource.getConnection();
+            } else {
+                this.connection = this.dataSource.getConnection(this.login, this.password);
+            }
             //    if ( act_pas_log_flag ){
             //        Utils.outln( ">>>>>>>>>> act_DS_Con: this.getCon()="+this.getCon() );
             //    } // if
@@ -957,7 +1015,6 @@ public class MConnection {
         sql.append(" WHERE " + this.getIdName(dbData.getTableName()) + "=?");
 
         PreparedStatement ps = null;
-        //Object insertedId = null;
         try {
             // create PreparedStatement
             ps = this.connection.prepareStatement(sql.toString());
@@ -1058,7 +1115,7 @@ public class MConnection {
                     "------------------------------------------------------------------------------"
                 );
                 return fd;
-            } // if
+            }
 
             // gen result
             List<DbData> dbdList = new ArrayList<>();
@@ -1186,18 +1243,15 @@ public class MConnection {
     private String[] getMetaDataTable(String tableName){
         String[] mt = (String[])(metaDataTable_Cash.get(tableName));
         if ( mt == null ){
-            //mt = queryMetaDataTable(tableName);
             mt = getMetaDataFields(setLimit("SELECT * FROM " + tableName));
             if ( mt != null ){
-                //metaDataTable_Cash.put(mt, tableName);
                 metaDataTable_Cash.put(tableName, mt);
-            } // if
-        } // if
+            }
+        }
 
         return mt;
     }
 
-    // con ++
     private String[] getMetaDataFields(String sql){
         if (sql == null){
             return null;
@@ -1217,7 +1271,7 @@ public class MConnection {
                 fc[i] = rs.getMetaData().getColumnName(i + 1);
                 if ( fc[i] != null){
                     fc[i] = fc[i].toUpperCase();
-                } // if
+                }
             }
 
             return fc;
@@ -1242,7 +1296,7 @@ public class MConnection {
                             sqlString
             );
             return null;
-        } // if
+        }
         if ( stmt.length == 0 ){
             CRSF = "stmt.length";
             Utils.outln(
@@ -1252,7 +1306,7 @@ public class MConnection {
                             sqlString
             );
             return null;
-        } // if
+        }
         if ( stmt[ 0 ] == null ){
             CRSF = "stmt[ 0 ] == null";
             Utils.outln(
@@ -1262,7 +1316,7 @@ public class MConnection {
                             sqlString
             );
             return null;
-        } // if
+        }
 
         ResultSet rs = null;
 
@@ -1391,7 +1445,6 @@ public class MConnection {
         //    } // if
 
         try {
-            //String str = connection.toString();
             connection.close();
             return true;
         } catch(Exception e){
@@ -1419,7 +1472,7 @@ public class MConnection {
             return false;
         } else {
             return true;
-        } // if
+        }
     }
     //^^DataSource
 
