@@ -748,7 +748,7 @@ public class MConnection {
 
         // Если режим 'DataSource', то берет из пула соединение, если это не сделано вышы (т.е. если соединение == null)
         ActivateResult activateResult = actDSCon(true, "executeSqlScript",
-                "Can't execute sqlScript=" + sqlScript);
+                "Can't execute sqlScript=\r\n" + sqlScript);
         if (!activateResult.done){
             return false;
         }
@@ -804,7 +804,6 @@ public class MConnection {
             if (idIndex < 0) {
                 // В списке полей нет ID
                 insertedId = this.genId(tableName, 1);
-
                 if (insertedId == null) {
                     return null;
                 }
@@ -816,11 +815,11 @@ public class MConnection {
                 }
                 ps = this.connection.prepareStatement(sql.toString());
 
+                // set Data
                 int delta = 2;
                 ps.setObject( 1, insertedId);
-                List<Object> values = dbData.getValues();
-                for ( int i = 0; i < values.size(); i++ ) {
-                    Object value = values.get(i);
+                for ( int i = 0; i < dbData.getValues().size(); i++ ) {
+                    Object value = dbData.getValues().get(i);
                     if ( value == null ){
                         ps.setObject( i + delta, value );
                     } else {
@@ -836,9 +835,7 @@ public class MConnection {
                 ps.executeUpdate();
                 return insertedId;
             } else {
-                List<Object> values = dbData.getValues();
-                insertedId = values.get(idIndex);
-
+                insertedId = dbData.getValues().get(idIndex);
                 if (insertedId == null) {
                     return null;
                 }
@@ -846,25 +843,10 @@ public class MConnection {
                 sql.append("INSERT INTO " + tableName + "( " + columns + " ) VALUES( " + quest + " )");
                 ps = this.connection.prepareStatement(sql.toString());
 
-//                int delta = 2;
-//                ps.setObject(1, insertedId);
-//                for (int i = 0; i < values.size(); i++) {
-//                    Object value = values.get(i);
-//                    if ( value == null ){
-//                        ps.setObject( i + delta, value );
-//                    } else {
-//                        if ( value.getClass().equals( java.util.Date.class ) ){
-//                            java.util.Date date = ((java.util.Date) value);
-//                            ps.setDate(i + delta, new java.sql.Date(date.getTime()));
-//                        } else {
-//                            ps.setObject( i + delta, value);
-//                        }
-//                    }
-//                }
-
+                // set Data
                 int delta = 1;
-                for (int i = 0; i < values.size(); i++) {
-                    Object value = values.get(i);
+                for (int i = 0; i < dbData.getValues().size(); i++) {
+                    Object value = dbData.getValues().get(i);
                     if ( value == null ){
                         ps.setObject( i + delta, value );
                     } else {
@@ -883,6 +865,7 @@ public class MConnection {
         } catch(Exception ex) {
             Utils.outln("MConnection#insertRow: ex = " + ex);
             Utils.outln("  sql=" + sql.toString());
+            Utils.outln("  insertedId=" + insertedId);
             Utils.outln("  dbData.getValues()=" + dbData.getValues());
             ex.printStackTrace();
             return null;
@@ -1464,11 +1447,11 @@ public class MConnection {
             return genIdLoc(tableName, delta);
         } else {
             // sequences (Postgres)
-            return pqsqlSeqNextval(sequences.get(tableName));
+            return selectNextval(sequences.get(tableName));
         }
     }
 
-    private Object pqsqlSeqNextval(String seqName){
+    private Object selectNextval(String seqName){
         if (seqName == null || seqName.isEmpty()){
             return null;
         }
@@ -1476,7 +1459,10 @@ public class MConnection {
         PreparedStatement ps = null;
         ResultSet rs = null;
         try {
-            ps = this.connection.prepareStatement( "SELECT nextval( '" + seqName + "' )" );
+            // postgresql: Select NEXTVAL ('SEQNAME')
+            // h2        : Select NEXTVAL ('SCHEMANAME','SEQNAME')
+            ps = this.connection.prepareStatement("SELECT nextval(?)");
+            ps.setString(1, seqName);
             rs = ps.executeQuery();
             if (rs.next()){
                 return rs.getObject( 1 );
