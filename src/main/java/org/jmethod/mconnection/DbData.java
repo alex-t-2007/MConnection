@@ -159,49 +159,56 @@ public class DbData {
     }
 
     public boolean getBoolean(int fieldIndex) {
-        return (Boolean) getObject(fieldIndex);
+        Boolean d = (Boolean) getObject(fieldIndex);
+        return d == null ? false : d;
     }
     public Boolean GetBoolean(int fieldIndex) {
         return (Boolean) getObject(fieldIndex);
     }
 
     public byte getByte(int fieldIndex) {
-        return (Byte) getObject(fieldIndex);
+        Byte d = (Byte) getObject(fieldIndex);
+        return d == null ? 0 : d;
     }
     public Byte GetByte(int fieldIndex) {
         return (Byte) getObject(fieldIndex);
     }
 
     public short getShort(int fieldIndex) {
-        return (Short) getObject(fieldIndex);
+        Short d = (Short) getObject(fieldIndex);
+        return d == null ? 0 : d;
     }
     public Short GetShort(int fieldIndex) {
         return (Short) getObject(fieldIndex);
     }
 
     public int getInteger(int fieldIndex) {
-        return (Integer) getObject(fieldIndex);
+        Integer d = (Integer) getObject(fieldIndex);
+        return d == null ? 0 : d;
     }
     public Integer GetInteger(int fieldIndex) {
         return (Integer) getObject(fieldIndex);
     }
 
     public long getLong(int fieldIndex) {
-        return (Long) getObject(fieldIndex);
+        Long d = (Long) getObject(fieldIndex);
+        return d == null ? 0 : d;
     }
     public Long GetLong(int fieldIndex) {
         return (Long) getObject(fieldIndex);
     }
 
     public float getFloat(int fieldIndex) {
-        return (Float) getObject(fieldIndex);
+        Float d = (Float) getObject(fieldIndex);
+        return d == null ? 0 : d;
     }
     public Float GetFloat(int fieldIndex) {
         return (Float) getObject(fieldIndex);
     }
 
     public double getDouble(int fieldIndex) {
-        return (Double) getObject(fieldIndex);
+        Double d = (Double) getObject(fieldIndex);
+        return d == null ? 0.0 : d;
     }
     public Double GetDouble(int fieldIndex) {
         return (Double) getObject(fieldIndex);
@@ -233,12 +240,13 @@ public class DbData {
 
     // get by fieldName
     public Object getObject(String fieldName) {
-        int index = indexes.get(fieldName);
-        return getObject(index);
+        Integer index = indexes.get(fieldName);
+        return index == null ? null : getObject(index.intValue());
     }
 
     public boolean getBoolean(String fieldName) {
-        return (Boolean) getObject(fieldName);
+        Boolean l = (Boolean) getObject(fieldName);
+        return l == null ? false : l.booleanValue();
     }
     public Boolean GetBoolean(String fieldName) {
         return (Boolean) getObject(fieldName);
@@ -248,39 +256,45 @@ public class DbData {
         return (Byte) getObject(fieldName);
     }
     public Byte GetByte(String fieldName) {
-        return (Byte) getObject(fieldName);
+        Byte l = (Byte) getObject(fieldName);
+        return l == null ? 0 : l.byteValue();
     }
 
     public short getShort(String fieldName) {
-        return (Short) getObject(fieldName);
+        Short l = (Short) getObject(fieldName);
+        return l == null ? 0 : l.shortValue();
     }
     public Short GetShort(String fieldName) {
         return (Short) getObject(fieldName);
     }
 
     public int getInteger(String fieldName) {
-        return (Integer) getObject(fieldName);
+        Integer l = (Integer) getObject(fieldName);
+        return l == null ? 0 : l.intValue();
     }
     public Integer GetInteger(String fieldName) {
         return (Integer) getObject(fieldName);
     }
 
     public long getLong(String fieldName) {
-        return (Long) getObject(fieldName);
+        Long l = (Long) getObject(fieldName);
+        return l == null ? 0L : l.longValue();
     }
     public Long    GetLong(String fieldName) {
         return (Long) getObject(fieldName);
     }
 
     public float getFloat(String fieldName) {
-        return (Float) getObject(fieldName);
+        Float l = (Float) getObject(fieldName);
+        return l == null ? 0L : l.floatValue();
     }
     public Float GetFloat(String fieldName) {
         return (Float) getObject(fieldName);
     }
 
     public double getDouble(String fieldName) {
-        return (Double) getObject(fieldName);
+        Double l = (Double) getObject(fieldName);
+        return l == null ? 0L : l.doubleValue();
     }
     public Double GetDouble(String fieldName) {
         return (Double) getObject(fieldName);
